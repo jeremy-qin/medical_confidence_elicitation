@@ -86,7 +86,7 @@ def experiment(params):
     sample_size = params["sample_size"]
 
     if dataset == "medqa":
-        data = MedQA("./datasets/medqa/")
+        data = MedQA("./datasets/medqa/data/")
 
     train_data = [x['question'] for x in data._train]
     dev_data = [x['question'] for x in data._dev]

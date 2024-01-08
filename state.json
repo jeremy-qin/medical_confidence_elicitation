@@ -1,0 +1,6 @@
+{
+    "dataset": "medqa",
+    "model": "gpt-3.5-turbo",
+    "sample_size": 100,
+    "prompt_template": "base"
+}
