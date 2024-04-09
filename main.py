@@ -1,7 +1,8 @@
 default_params = {
-    "dataset": "medqa",
+    "dataset": "commonsenseqa",
     "model": "gpt-3.5-turbo",
-    "sample_size": 1000,
+    "sample_size": 500,
+    "k": 1,
     "prompt_template": "atypical"
 }
 
@@ -218,7 +219,7 @@ def experiment(params):
     import numpy as np
     import os
     import pandas as pd
-    from data import MedQA
+    from data import MedQA, CommonsenseQA
     import random
     from langchain.prompts import PromptTemplate
     from langchain_community.chat_models import ChatOpenAI
@@ -231,13 +232,17 @@ def experiment(params):
     model = params["model"]
     prompt_template = params["prompt_template"]
     sample_size = params["sample_size"]
+    k = params["k"]
 
     if dataset == "medqa":
         data = MedQA("./datasets/medqa/data/")
-
-    train_data = [x['question'] for x in data._train]
-    dev_data = [x['question'] for x in data._dev]
-    dev_data_answers = [x['answer'] for x in data._dev]
+        train_data = [x['question'] for x in data._train]
+        dev_data = [x['question'] for x in data._dev]
+        dev_data_answers = [x['answer'] for x in data._dev]
+    elif dataset == "commonsenseqa":
+        data = CommonsenseQA("./datasets/commonsenseqa/dev_rand_split.jsonl")
+        dev_data = data._dev_questions
+        dev_data_answers = data._dev_labels
 
     if sample_size == "all":
         dev_examples = dev_data
@@ -290,7 +295,7 @@ def experiment(params):
             temp_answers = []
             temp_difficulty_scores = []
 
-            for _ in range(1):
+            for _ in range(k):
                 raw_answer = llm_chain.run(question)
                 standardized_answer, difficulty_score, confidence_score = standardize_and_extract_details(raw_answer)
                 if prompt_template == "atypical":

@@ -42,6 +42,31 @@ def atypical_prompt_template():
         """
     return template
 
+def commonsense_qa_prompt_template():
+    template = """
+        Question and Options: {question}
+
+        First, list all relevant commonsense elements related to the question and assign each an atypicality score between 0 and 1 (0 being highly atypical or unexpected in a typical scenario, and 1 being very typical or expected):
+
+        Commonsense Elements:
+        - Element 1: [Atypicality score]
+        - Element 2: [Atypicality score]
+        - Element 3: [Atypicality score]
+        - ...
+
+        Consider factors such as actions, consequences, social norms, physical interactions, and logical sequences when assessing atypicality.
+
+        Then, provide your response in the following format:
+        Response:
+        - Answer (letter): [Letter of the choice]
+        - Reasoning Atypicality: [Average Atypicality score of used elements]
+        - Difficulty: [Score on a scale from 1 to 10, with 10 being the hardest based on the complexity of commonsense reasoning required]
+        - Confidence: [Adjusted confidence percentage between 0 and 100%, considering the Reasoning Atypicality and question difficulty]
+
+        Answer, Reasoning Atypicality, Difficulty, and Confidence:
+        """
+    return template
+
 def base_prompt_template_2():
     template = """
         Question and Options: {question}
