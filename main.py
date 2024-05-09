@@ -1,7 +1,7 @@
 default_params = {
-    "dataset": "commonsenseqa",
+    "dataset": "medqa",
     "model": "gpt-3.5-turbo",
-    "sample_size": 500,
+    "sample_size": 250,
     "k": 1,
     "prompt_template": "atypical"
 }
@@ -26,7 +26,7 @@ from tqdm import tqdm
 from langchain_community.llms import HuggingFaceHub
 from langchain.chains import LLMChain
 
-from prompt_templates import base_prompt_template, base_prompt_template_2, cot_prompt_template, atypical_prompt_template
+from prompt_templates import base_prompt_template, base_prompt_template_2, cot_prompt_template, atypical_prompt_template, atypical_situation_prompt_template
 
 # Function to standardize and extract confidence score
 def standardize_and_extract_confidence(answer):
@@ -46,24 +46,40 @@ def parse_full_output_and_store_scores(full_output_text):
     # Initialize an empty list to store scores
     scores = []
     
+    # Define a regex pattern that matches the described cases
+    # This pattern looks for:
+    # - A number that can optionally have a decimal part
+    # - This number can be enclosed in brackets or parentheses
+    # - The number can directly follow a colon or be at the end of the line
+    pattern = re.compile(r':?\s*(?:\[\s*|\(\s*)?(\d+(?:\.\d+)?)(?:\s*\]|\s*\))?\s*$')
+    
     # Process only the "Symptoms and signs" section
     for section in sections:
         if section.startswith("Symptoms and signs:"):
             # Split the section into lines
             lines = section.split('\n')
-            for line in lines:
-                # Search for lines with scores using the updated regex
-                match = re.search(r'- .*: (\d)', line)
+            for line in lines[1:]:  # Skip the first line which is the title
+                match = pattern.search(line)
                 if match:
-                    # Extract the score and convert it to an integer
-                    score = int(match.group(1))
-                    if score == None:
-                        score = 1
+                    # Extract the score and convert it to a float
+                    score = float(match.group(1))
                     scores.append(score)
-                    
+    
     # Convert the list of scores to a numpy array
     scores_array = np.array(scores)
     return scores_array
+
+def parse_atypical_situation_scores(full_output_text):
+    match = re.search(r'Atypicality: \[?(\d(?:\.\d+)?)\]?', full_output_text)
+    if match:
+        # Extract the score and convert it to a float
+        score = float(match.group(1))
+    else:
+        # Default to None if no match is found
+        score = None
+    
+    # Convert the score to a numpy array and return
+    return np.array([score]) if score is not None else np.array([])
 
 # def standardize_and_extract_details(answer_text):
 #     # Adjusted regular expressions to match the LLM's actual answer format
@@ -261,6 +277,9 @@ def experiment(params):
     elif prompt_template == "atypical":
         template = atypical_prompt_template()
         prompt = PromptTemplate(template = template, input_variables=['question'])
+    elif prompt_template == "atypical-situation":
+        template = atypical_situation_prompt_template()
+        prompt = PromptTemplate(template = template, input_variables=['question'])
     elif prompt_template == "cot":
         template = cot_prompt_template()
         prompt = PromptTemplate(template = template, input_variables=['question'])
@@ -278,7 +297,7 @@ def experiment(params):
         llm = gpt
     )
 
-    if prompt_template == "base" or prompt_template == "deliberate_reflection" or prompt_template == "atypical":
+    if prompt_template == "base" or prompt_template == "deliberate_reflection" or prompt_template == "atypical" or prompt_template == "atypical-situation":
         print("Using base prompt template")
         answers_gpt = []
         confidence_scores = []
@@ -300,6 +319,14 @@ def experiment(params):
                 standardized_answer, difficulty_score, confidence_score = standardize_and_extract_details(raw_answer)
                 if prompt_template == "atypical":
                     atypical_scores = parse_full_output_and_store_scores(raw_answer)
+                    print(f"Atypical Scores: {atypical_scores}")
+                    if len(atypical_scores) <= 0:
+                        atypical_scores = np.array([1])
+                    calibrated_confidence = confidence_score * np.mean(np.exp(atypical_scores-1))
+                    print(f"Calibrated Confidence: {calibrated_confidence}")
+                    confidence_score = calibrated_confidence
+                elif prompt_template == "atypical-situation":
+                    atypical_scores = parse_atypical_situation_scores(raw_answer)
                     print(f"Atypical Scores: {atypical_scores}")
                     if len(atypical_scores) <= 0:
                         atypical_scores = np.array([1])

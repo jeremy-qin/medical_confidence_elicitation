@@ -25,7 +25,11 @@ def atypical_prompt_template():
     template = """
         Question and Options: {question}
 
-        First, list all the symptoms and assign each a atypical score between 0 and 1 (0 being atypical and 1 being typical) as follow:
+        First, assess each symptom with respect to its typicality in the described scenario. Assign an atypicality score between 0 and 1, where:
+        - 0 indicates a highly atypical symptom, uncommon or rare in such scenarios.
+        - 1 indicates a very typical symptom, commonly expected in such scenarios.
+        - Scores between 0 and 1 (such as 0.25, 0.5, 0.75) indicate varying degrees of typicality.
+
         Symptoms and signs:
         - Symptom 1: [Atypical score]
         - Symptom 2: [Atypical score]
@@ -39,6 +43,27 @@ def atypical_prompt_template():
         - Confidence: [Percentage score between 0 and 100%]
 
         Answer, Difficulty and Confidence:
+        """
+    return template
+
+def atypical_situation_prompt_template():
+    template = """
+        Question and Options: {question}
+
+        First, assess the situation described in the question and assign an atypicality score between 0 and 1, where:
+        - 0 indicates a highly atypical situation, uncommon or rare in such scenarios.
+        - 1 indicates a very typical situation, commonly expected in such scenarios.
+        - Scores between 0 and 1 (such as 0.25, 0.5, 0.75) indicate varying degrees of typicality.
+
+        Situation Atypicality: [Atypicality score]
+
+        Then, provide your response in the following format:
+        Response:
+        - Answer (letter): [Letter of the choice]
+        - Difficulty: [Score on a scale from 1 to 10 with 10 being the hardest]
+        - Confidence: [Percentage score between 0 and 100%]
+
+        Answer, Difficulty, and Confidence:
         """
     return template
 
