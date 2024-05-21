@@ -1,10 +1,10 @@
 default_params = {
-    "dataset": "medqa",
+    "dataset": "medmcqa",
     "model": "gpt-3.5-turbo",
-    "sample_size": 12,
-    "k": 3,
-    "prompt_template": "vanilla",
-    "sampling": "average"
+    "sample_size": "all",
+    "k": 1,
+    "prompt_template": "atypical",
+    "sampling": "base"
 }
 
 def defaults(dictionary, dictionary_defaults):
@@ -201,91 +201,131 @@ def avg_confidence(candidate_answers, candidate_confidences, given_answer):
     avg_conf = numerator / denominator
     return avg_conf
 
-def compute_auc(df):
-    # Convert confidence scores to a scale of 0 to 1
-    df['Average Confidence'] /= 100
+# def compute_auc(df):
+#     # Convert confidence scores to a scale of 0 to 1
+#     df['Average Confidence'] /= 100
 
-    # Sort DataFrame by confidence in descending order for cumulative operations
-    df_sorted = df.sort_values(by='Average Confidence', ascending=False)
+#     # Sort DataFrame by confidence in descending order for cumulative operations
+#     df_sorted = df.sort_values(by='Average Confidence', ascending=False)
 
-    # Initialize lists to store coverage and selective accuracy values
-    coverage_values = []
-    selective_accuracy_values = []
+#     # Initialize lists to store coverage and selective accuracy values
+#     coverage_values = []
+#     selective_accuracy_values = []
 
-    # Define thresholds
-    thresholds = np.linspace(0, 1, 21)  # Example: 21 thresholds from 0 to 1
+#     # Define thresholds
+#     thresholds = np.linspace(0, 1, 21)  # Example: 21 thresholds from 0 to 1
 
-    for threshold in thresholds:
-        # Determine subset of df where confidence is above the threshold
-        subset_df = df_sorted[df_sorted['Average Confidence'] >= threshold]
+#     for threshold in thresholds:
+#         # Determine subset of df where confidence is above the threshold
+#         subset_df = df_sorted[df_sorted['Average Confidence'] >= threshold]
 
-        if not subset_df.empty:
-            # Calculate selective accuracy for the current threshold
-            correct_predictions = subset_df['Is Correct'].sum()
-            total_predictions = len(subset_df)
-            selective_accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0
+#         if not subset_df.empty:
+#             # Calculate selective accuracy for the current threshold
+#             correct_predictions = subset_df['Is Correct'].sum()
+#             total_predictions = len(subset_df)
+#             selective_accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0
 
-            # Calculate coverage
-            coverage = total_predictions / len(df)
-        else:
-            selective_accuracy = 1.0  # Assuming perfect accuracy when no predictions are made
-            coverage = 0.0
+#             # Calculate coverage
+#             coverage = total_predictions / len(df)
+#         else:
+#             selective_accuracy = 1.0  # Assuming perfect accuracy when no predictions are made
+#             coverage = 0.0
 
-        selective_accuracy_values.append(selective_accuracy)
-        coverage_values.append(coverage)
+#         selective_accuracy_values.append(selective_accuracy)
+#         coverage_values.append(coverage)
 
-    # Compute AUC
-    auc_value = auc(coverage_values, selective_accuracy_values)
-    return auc_value
+#     # Compute AUC
+#     auc_value = auc(coverage_values, selective_accuracy_values)
+#     return auc_value
+
+def compute_auc(df, sampling):
+    import torch
+    from torchmetrics import AUROC
+
+    auc = AUROC(task='binary')
+
+    df['Target'] = df['Correct Answers'] == df['Final Prediction']
+    target = torch.tensor(df['Target'].values).int()
+
+    if sampling == "base":
+        conf = torch.tensor(df['All Confidence Scores'].apply(lambda x: x[0]).values)/100
+    elif sampling == "consistency":
+        conf = torch.tensor(df['Consistency Confidence'].apply(lambda x: x[0]).values)/100
+    else:
+        conf = torch.tensor(df['Average Confidence'].apply(lambda x: x[0]).values)/100
+
+    auroc = auc(conf, target)
+    print(auroc)
+    return auroc
+
+# def compute_ece(df, sampling):
+#     """
+#     Compute the Expected Calibration Error (ECE) of a model's predictions.
+
+#     Parameters:
+#     df (pandas.DataFrame): DataFrame containing the following columns:
+#         'Majority Predicted Answer': The model's predicted answer.
+#         'Correct Answers': The ground truth answer.
+#         'Average Confidence': The model's confidence in its prediction as a percentage (0-100).
+
+#     Returns:
+#     float: The computed ECE value.
+#     """
+    
+#     # Create a new column 'Is Correct' to determine if the prediction is correct
+#     if sampling == "consistency":
+#         df['Is Correct'] = df['Majority Predicted Answer'] == df['Correct Answers']
+#     else:
+#         df['Is Correct'] = df['Final Prediction'] == df['Correct Answers']
+
+#     # df['Is Correct'] = df['Majority Predicted Answer'] == df['Correct Answers']
+    
+#     if sampling == "base":
+#         col = "Average Vanilla Confidence"
+#     elif sampling == "consistency":
+#         col = "Consistency Confidence"
+#     elif sampling == "average":
+#         col = "Average Vanilla Confidence"
+#     elif sampling =="atypicality_average":
+#         col = "Average Confidence"
+
+#     # Define bins and compute bin indices
+#     bins = np.linspace(0, 100, 11)  # 5 bins from 0 to 100
+#     bin_indices = np.digitize(df[col], bins) - 1
+    
+#     # Initialize the ECE
+#     ece = 0
+    
+#     # Iterate over each bin to calculate ECE
+#     for i in range(len(bins) - 1):
+#         bin_mask = bin_indices == i
+#         if np.sum(bin_mask) > 0:
+#             bin_confidence = np.mean(df.loc[bin_mask, col]) / 100
+#             bin_accuracy = np.mean(df.loc[bin_mask, 'Is Correct'])
+#             bin_proportion = np.sum(bin_mask) / len(df)
+#             ece += bin_proportion * abs(bin_accuracy - bin_confidence)
+    
+#     ece = np.array([ece])
+#     print(ece)
+#     return ece
 
 def compute_ece(df, sampling):
-    """
-    Compute the Expected Calibration Error (ECE) of a model's predictions.
+    import torch
+    from torchmetrics import CalibrationError
 
-    Parameters:
-    df (pandas.DataFrame): DataFrame containing the following columns:
-        'Majority Predicted Answer': The model's predicted answer.
-        'Correct Answers': The ground truth answer.
-        'Average Confidence': The model's confidence in its prediction as a percentage (0-100).
+    calibration_error = CalibrationError(n_bins=10, norm='l1', task='binary')
 
-    Returns:
-    float: The computed ECE value.
-    """
-    
-    # Create a new column 'Is Correct' to determine if the prediction is correct
-    if sampling == "consistency":
-        df['Is Correct'] = df['Majority Predicted Answer'] == df['Correct Answers']
-    else:
-        df['Is Correct'] = df['Final Prediction'] == df['Correct Answers']
+    df['Target'] = df['Correct Answers'] == df['Final Prediction']
+    target = torch.tensor(df['Target'].values).int()
 
-    # df['Is Correct'] = df['Majority Predicted Answer'] == df['Correct Answers']
-    
     if sampling == "base":
-        col = "Average Vanilla Confidence"
+        conf = torch.tensor(df['All Confidence Scores'].apply(lambda x: x[0]).values)/100
     elif sampling == "consistency":
-        col = "Consistency Confidence"
-    elif sampling == "average":
-        col = "Average Vanilla Confidence"
-    elif sampling =="atypicality_average":
-        col = "Average Confidence"
+        conf = torch.tensor(df['Consistency Confidence'].apply(lambda x: x[0]).values)/100
+    else:
+        conf = torch.tensor(df['Average Confidence'].apply(lambda x: x[0]).values)/100
 
-    # Define bins and compute bin indices
-    bins = np.linspace(0, 100, 11)  # 5 bins from 0 to 100
-    bin_indices = np.digitize(df[col], bins) - 1
-    
-    # Initialize the ECE
-    ece = 0
-    
-    # Iterate over each bin to calculate ECE
-    for i in range(len(bins) - 1):
-        bin_mask = bin_indices == i
-        if np.sum(bin_mask) > 0:
-            bin_confidence = np.mean(df.loc[bin_mask, col]) / 100
-            bin_accuracy = np.mean(df.loc[bin_mask, 'Is Correct'])
-            bin_proportion = np.sum(bin_mask) / len(df)
-            ece += bin_proportion * abs(bin_accuracy - bin_confidence)
-    
-    ece = np.array([ece])
+    ece = calibration_error(conf, target)
     print(ece)
     return ece
 
@@ -353,6 +393,12 @@ def experiment(params):
     k = params["k"]
     sampling = params["sampling"]
 
+
+    if sampling == "base" and k > 1:
+        raise ValueError("k must be 1 when sampling is 'base'.")
+    elif sampling != "base" and k <= 1:
+        raise ValueError("k must be > 1")
+
     if dataset == "medqa":
         data = MedQA("./datasets/medqa/data/")
         train_data = [x['question'] for x in data._train]
@@ -399,7 +445,9 @@ def experiment(params):
     if model == "gpt-3.5-turbo":
         llm = ChatOpenAI(model_name='gpt-3.5-turbo')
     elif model == "gpt-4":
-        llm = ChatOpenAI(model_name="gpt4")
+        llm = ChatOpenAI(model_name="gpt-4")
+    elif model == "gpt-4-turbo":
+        llm = ChatOpenAI(model_name="gpt-4-turbo")
     elif model == "claude":
         llm = ChatAnthropic(model='claude-3-opus-20240229')
     elif model == "gemini":
@@ -514,7 +562,7 @@ def experiment(params):
             'Ground Truth Probability': ground_truth_probabilities
         })
         
-        df.to_parquet(f"./results/{dataset}_{model}_{prompt_template}_{sample_size}_{current_time}.parquet")
+        df.to_parquet(f"./results/{dataset}_{model}_{prompt_template}_{sampling}_{sample_size}_{current_time}.parquet")
     
     elif prompt_template == "cot":
         print("Using cot prompt template")
@@ -570,7 +618,7 @@ def experiment(params):
     accuracy = correct / len(df)
     acc = np.array([accuracy])
     print(accuracy)
-    np.save(f"./results/{dataset}_{model}_{prompt_template}_{sample_size}_{current_time}_acc.npy", acc)
+    np.save(f"./results/{dataset}_{model}_{prompt_template}_{sampling}_{sample_size}_{current_time}_acc.npy", acc)
 
     #compute ece
     print("Computing ece")
@@ -594,7 +642,7 @@ def experiment(params):
     print(brier)
 
     print("Computing AUC")
-    auc_score = compute_auc(df)
+    auc_score = compute_auc(df, sampling)
     print(f"AUC Score: {auc_score}")
 
 if __name__ == "__main__":
