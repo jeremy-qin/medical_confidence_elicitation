@@ -1,9 +1,9 @@
 default_params = {
-    "dataset": "medmcqa",
+    "dataset": "medqa",
     "model": "gpt-3.5-turbo",
     "sample_size": "all",
     "k": 1,
-    "prompt_template": "atypical",
+    "prompt_template": "deliberate_reflection",
     "sampling": "base"
 }
 
@@ -250,9 +250,9 @@ def compute_auc(df, sampling):
     if sampling == "base":
         conf = torch.tensor(df['All Confidence Scores'].apply(lambda x: x[0]).values)/100
     elif sampling == "consistency":
-        conf = torch.tensor(df['Consistency Confidence'].apply(lambda x: x[0]).values)/100
+        conf = torch.tensor(df['Consistency Confidence'].values)
     else:
-        conf = torch.tensor(df['Average Confidence'].apply(lambda x: x[0]).values)/100
+        conf = torch.tensor(df['Average Confidence'].values)
 
     auroc = auc(conf, target)
     print(auroc)
@@ -321,9 +321,9 @@ def compute_ece(df, sampling):
     if sampling == "base":
         conf = torch.tensor(df['All Confidence Scores'].apply(lambda x: x[0]).values)/100
     elif sampling == "consistency":
-        conf = torch.tensor(df['Consistency Confidence'].apply(lambda x: x[0]).values)/100
+        conf = torch.tensor(df['Consistency Confidence'].values)
     else:
-        conf = torch.tensor(df['Average Confidence'].apply(lambda x: x[0]).values)/100
+        conf = torch.tensor(df['Average Confidence'].values)
 
     ece = calibration_error(conf, target)
     print(ece)
