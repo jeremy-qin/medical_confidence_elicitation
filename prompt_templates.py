@@ -152,17 +152,34 @@ def base_prompt_template_2():
         """
     return template
 
+# def cot_prompt_template():
+#     template = """
+
+#         Question and Options: {question}
+
+#         Let's think step by step.
+#         [Outline the reasoning process here, going through the question step by step.]
+
+#         Based on the reasoning above, complete the following:
+#         The answer is letter __ and I am __% confident.
+
+#         Reasoning, Answer and Confidence:
+#         """
+#     return template
+
 def cot_prompt_template():
     template = """
-
         Question and Options: {question}
 
         Let's think step by step.
-        [Outline the reasoning process here, going through the question step by step.]
+#       [Outline the reasoning process here, going through the question step by step.]
 
-        Based on the reasoning above, complete the following:
-        The answer is letter __ and I am __% confident.
+        Then, provide your response in the following format:
+        Response:
+        - Answer (letter): [Letter of the choice]
+        - Difficulty: [Score on a scale from 1 to 10 with 10 being the hardest]
+        - Confidence: [Percentage score between 0 and 100%]
 
-        Reasoning, Answer and Confidence:
+        Answer, Difficulty and Confidence:
         """
     return template

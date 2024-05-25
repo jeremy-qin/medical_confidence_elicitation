@@ -3,7 +3,7 @@ default_params = {
     "model": "gpt-3.5-turbo",
     "sample_size": "all",
     "k": 1,
-    "prompt_template": "deliberate_reflection",
+    "prompt_template": "cot",
     "sampling": "base"
 }
 
@@ -458,7 +458,7 @@ def experiment(params):
         llm = llm
     )
 
-    if prompt_template == "vanilla" or prompt_template == "deliberate_reflection" or prompt_template == "atypical" or prompt_template == "atypical-situation":
+    if prompt_template == "vanilla" or prompt_template == "cot" or prompt_template == "deliberate_reflection" or prompt_template == "atypical" or prompt_template == "atypical-situation":
         print("Using base prompt template")
         answers_gpt = []
         consistency_scores = []
@@ -564,50 +564,50 @@ def experiment(params):
         
         df.to_parquet(f"./results/{dataset}_{model}_{prompt_template}_{sampling}_{sample_size}_{current_time}.parquet")
     
-    elif prompt_template == "cot":
-        print("Using cot prompt template")
-        answers_gpt = []
-        confidence_scores = []
-        ground_truth_probabilities = []
-        all_confidence_scores = []
-        all_predictions = []
-        reasonings = []
+    # elif prompt_template == "cot":
+    #     print("Using cot prompt template")
+    #     answers_gpt = []
+    #     confidence_scores = []
+    #     ground_truth_probabilities = []
+    #     all_confidence_scores = []
+    #     all_predictions = []
+    #     reasonings = []
 
-        for question, correct_answer in tqdm(zip(dev_examples, dev_answers), total=len(dev_examples)):
-            temp_scores = []
-            temp_answers = []
-            temp_reasonings = []
+    #     for question, correct_answer in tqdm(zip(dev_examples, dev_answers), total=len(dev_examples)):
+    #         temp_scores = []
+    #         temp_answers = []
+    #         temp_reasonings = []
 
-            for i in range(3):
-                raw_answer = llm_chain.run(question)
-                standardized_answer, confidence_score, reasoning = standardize_and_extract_confidence_and_reasoning(raw_answer)
-                temp_answers.append(standardized_answer)
-                temp_reasonings.append(reasoning)
-                if confidence_score is not None:
-                    temp_scores.append(confidence_score)
+    #         for i in range(3):
+    #             raw_answer = llm_chain.run(question)
+    #             standardized_answer, confidence_score, reasoning = standardize_and_extract_confidence_and_reasoning(raw_answer)
+    #             temp_answers.append(standardized_answer)
+    #             temp_reasonings.append(reasoning)
+    #             if confidence_score is not None:
+    #                 temp_scores.append(confidence_score)
 
-            average_confidence = sum(temp_scores) / len(temp_scores) if temp_scores else None
-            ground_truth_probability = compute_ground_truth_probability(correct_answer, temp_answers)
-            majority_answer = get_majority_answer(temp_answers)
+    #         average_confidence = sum(temp_scores) / len(temp_scores) if temp_scores else None
+    #         ground_truth_probability = compute_ground_truth_probability(correct_answer, temp_answers)
+    #         majority_answer = get_majority_answer(temp_answers)
 
-            answers_gpt.append(majority_answer)  # Storing only the majority answer
-            confidence_scores.append(average_confidence)
-            ground_truth_probabilities.append(ground_truth_probability)
-            all_confidence_scores.append(temp_scores)
-            all_predictions.append(temp_answers)
-            reasonings.append(temp_reasonings[-1])
+    #         answers_gpt.append(majority_answer)  # Storing only the majority answer
+    #         confidence_scores.append(average_confidence)
+    #         ground_truth_probabilities.append(ground_truth_probability)
+    #         all_confidence_scores.append(temp_scores)
+    #         all_predictions.append(temp_answers)
+    #         reasonings.append(temp_reasonings[-1])
 
-        # Creating DataFrame
-        df = pd.DataFrame({
-            'Questions': dev_examples,
-            'Reasoning': reasonings,
-            'Correct Answers': dev_answers,
-            'Majority Predicted Answer': answers_gpt,
-            'All Predicted Answers': all_predictions,
-            'Average Confidence': confidence_scores,
-            'All Confidence Scores': all_confidence_scores,
-            'Ground Truth Probability': ground_truth_probabilities
-        })
+    #     # Creating DataFrame
+    #     df = pd.DataFrame({
+    #         'Questions': dev_examples,
+    #         'Reasoning': reasonings,
+    #         'Correct Answers': dev_answers,
+    #         'Majority Predicted Answer': answers_gpt,
+    #         'All Predicted Answers': all_predictions,
+    #         'Average Confidence': confidence_scores,
+    #         'All Confidence Scores': all_confidence_scores,
+    #         'Ground Truth Probability': ground_truth_probabilities
+    #     })
     
     # Compute accuracy
     print("Computing accuracy")
