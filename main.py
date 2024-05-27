@@ -1,9 +1,9 @@
 default_params = {
     "dataset": "medqa",
-    "model": "gpt-3.5-turbo",
+    "model": "claude",
     "sample_size": "all",
     "k": 1,
-    "prompt_template": "cot",
+    "prompt_template": "atypical-situation",
     "sampling": "base"
 }
 
@@ -383,6 +383,7 @@ def experiment(params):
 
     os.environ.get('OPENAI_API_KEY')
     os.environ.get('GOOGLE_API_KEY')
+    os.environ.get('ANTHROPIC_API_KEY')
     
     print("Start of Experiment")
 
@@ -449,7 +450,7 @@ def experiment(params):
     elif model == "gpt-4-turbo":
         llm = ChatOpenAI(model_name="gpt-4-turbo")
     elif model == "claude":
-        llm = ChatAnthropic(model='claude-3-opus-20240229')
+        llm = ChatAnthropic(model='claude-3-sonnet-20240229')
     elif model == "gemini":
         llm = ChatGoogleGenerativeAI(model="gemini-pro")
         
