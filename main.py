@@ -1,9 +1,9 @@
 default_params = {
-    "dataset": "medqa",
-    "model": "claude",
+    "dataset": "pubmedqa",
+    "model": "gpt-3.5-turbo",
     "sample_size": "all",
     "k": 1,
-    "prompt_template": "atypical-situation",
+    "prompt_template": "atypical",
     "sampling": "base"
 }
 
@@ -372,7 +372,7 @@ def experiment(params):
     import numpy as np
     import os
     import pandas as pd
-    from data import MedQA, CommonsenseQA, MedMCQA
+    from data import MedQA, CommonsenseQA, MedMCQA, PubmedQA
     import random
     from langchain.prompts import PromptTemplate
     from langchain_community.chat_models import ChatOpenAI
@@ -407,6 +407,10 @@ def experiment(params):
         dev_data_answers = [x['answer'] for x in data._dev]
     elif dataset == "medmcqa":
         data = MedMCQA("./datasets/medmcqa/dev.json")
+        dev_data = data._dev_questions
+        dev_data_answers = data._dev_labels
+    elif dataset == "pubmedqa":
+        data = PubmedQA("./datasets/pubmedqa/dev.json")
         dev_data = data._dev_questions
         dev_data_answers = data._dev_labels
     elif dataset == "commonsenseqa":

@@ -105,3 +105,40 @@ class MedMCQA():
     return questions_with_choices, correct_answers
 
 
+class PubmedQA():
+  def __init__(self, json_path, **kwargs):
+    self._dev_data, self._dev_answers = self.load_pubmedqa(json_path)
+    super().__init__(**kwargs)
+
+
+  @property
+  def _dev_questions(self):
+    return self._dev_data
+  
+  @property
+  def _dev_labels(self):
+    return self._dev_answers
+  
+  def __len__(self):
+    return len(self.data)
+  
+  def load_pubmedqa(self, path):
+    data = []
+    questions_with_choices = []
+    correct_answers = []
+
+    cop_to_letter = {"yes": "A", "no": "B", "maybe": "C"}
+
+    # Read JSON data from a file
+    with open(path, 'r') as file:
+        data = json.load(file)
+    
+
+    for key in data:
+      item = data[key]
+      question = f"{item['QUESTION']} A: yes, B: no, C: maybe"
+      questions_with_choices.append(question)
+      correct_answer = cop_to_letter[item["reasoning_required_pred"]]
+      correct_answers.append(correct_answer)
+
+    return questions_with_choices, correct_answers
