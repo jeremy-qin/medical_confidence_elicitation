@@ -1,9 +1,9 @@
 default_params = {
-    "dataset": "pubmedqa",
-    "model": "gpt-3.5-turbo",
+    "dataset": "medqa",
+    "model": "gpt-4-turbo",
     "sample_size": "all",
     "k": 1,
-    "prompt_template": "atypical",
+    "prompt_template": "vanilla",
     "sampling": "base"
 }
 
@@ -201,42 +201,6 @@ def avg_confidence(candidate_answers, candidate_confidences, given_answer):
     avg_conf = numerator / denominator
     return avg_conf
 
-# def compute_auc(df):
-#     # Convert confidence scores to a scale of 0 to 1
-#     df['Average Confidence'] /= 100
-
-#     # Sort DataFrame by confidence in descending order for cumulative operations
-#     df_sorted = df.sort_values(by='Average Confidence', ascending=False)
-
-#     # Initialize lists to store coverage and selective accuracy values
-#     coverage_values = []
-#     selective_accuracy_values = []
-
-#     # Define thresholds
-#     thresholds = np.linspace(0, 1, 21)  # Example: 21 thresholds from 0 to 1
-
-#     for threshold in thresholds:
-#         # Determine subset of df where confidence is above the threshold
-#         subset_df = df_sorted[df_sorted['Average Confidence'] >= threshold]
-
-#         if not subset_df.empty:
-#             # Calculate selective accuracy for the current threshold
-#             correct_predictions = subset_df['Is Correct'].sum()
-#             total_predictions = len(subset_df)
-#             selective_accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0
-
-#             # Calculate coverage
-#             coverage = total_predictions / len(df)
-#         else:
-#             selective_accuracy = 1.0  # Assuming perfect accuracy when no predictions are made
-#             coverage = 0.0
-
-#         selective_accuracy_values.append(selective_accuracy)
-#         coverage_values.append(coverage)
-
-#     # Compute AUC
-#     auc_value = auc(coverage_values, selective_accuracy_values)
-#     return auc_value
 
 def compute_auc(df, sampling):
     import torch
@@ -258,57 +222,6 @@ def compute_auc(df, sampling):
     print(auroc)
     return auroc
 
-# def compute_ece(df, sampling):
-#     """
-#     Compute the Expected Calibration Error (ECE) of a model's predictions.
-
-#     Parameters:
-#     df (pandas.DataFrame): DataFrame containing the following columns:
-#         'Majority Predicted Answer': The model's predicted answer.
-#         'Correct Answers': The ground truth answer.
-#         'Average Confidence': The model's confidence in its prediction as a percentage (0-100).
-
-#     Returns:
-#     float: The computed ECE value.
-#     """
-    
-#     # Create a new column 'Is Correct' to determine if the prediction is correct
-#     if sampling == "consistency":
-#         df['Is Correct'] = df['Majority Predicted Answer'] == df['Correct Answers']
-#     else:
-#         df['Is Correct'] = df['Final Prediction'] == df['Correct Answers']
-
-#     # df['Is Correct'] = df['Majority Predicted Answer'] == df['Correct Answers']
-    
-#     if sampling == "base":
-#         col = "Average Vanilla Confidence"
-#     elif sampling == "consistency":
-#         col = "Consistency Confidence"
-#     elif sampling == "average":
-#         col = "Average Vanilla Confidence"
-#     elif sampling =="atypicality_average":
-#         col = "Average Confidence"
-
-#     # Define bins and compute bin indices
-#     bins = np.linspace(0, 100, 11)  # 5 bins from 0 to 100
-#     bin_indices = np.digitize(df[col], bins) - 1
-    
-#     # Initialize the ECE
-#     ece = 0
-    
-#     # Iterate over each bin to calculate ECE
-#     for i in range(len(bins) - 1):
-#         bin_mask = bin_indices == i
-#         if np.sum(bin_mask) > 0:
-#             bin_confidence = np.mean(df.loc[bin_mask, col]) / 100
-#             bin_accuracy = np.mean(df.loc[bin_mask, 'Is Correct'])
-#             bin_proportion = np.sum(bin_mask) / len(df)
-#             ece += bin_proportion * abs(bin_accuracy - bin_confidence)
-    
-#     ece = np.array([ece])
-#     print(ece)
-#     return ece
-
 def compute_ece(df, sampling):
     import torch
     from torchmetrics import CalibrationError
@@ -329,11 +242,17 @@ def compute_ece(df, sampling):
     print(ece)
     return ece
 
-def brier_score(df):
+def brier_score(df, sampling):
 
     true_answers_col = "Correct Answers"
     predictions_col = "Final Prediction"
-    confidence_col = "Average Confidence"
+
+    if sampling == "average":
+        confidence_col = "Average Confidence"
+    elif sampling == "consistency":
+        confidence_col = "Consistency Confidence"
+    elif sampling == "base":
+        confidence_col = "All Confidence Scores"
 
     # Extract the true answers and predictions
     true_answers = df[true_answers_col]
@@ -351,8 +270,13 @@ def brier_score(df):
     for index, row in df.iterrows():
         true_answer = row[true_answers_col]
         predicted_answer = row[predictions_col]
-        confidence = row[confidence_col]
+        if sampling == "base":
+            confidence = row[confidence_col][0]/100
+        else:
+            confidence = row[confidence_col]
 
+        if confidence > 1:
+            confidence = 0.5
         # Determine the binary outcome
         outcome = 1 if predicted_answer == true_answer else 0
 
@@ -360,8 +284,10 @@ def brier_score(df):
         outcomes.append(outcome)
         confidences.append(confidence)
 
-    # Calculate the Brier score
-    brier_score_sum = sum((conf - outcome) ** 2 for conf, outcome in zip(confidences, outcomes))
+    # # Calculate the Brier score
+    brier_score_sum = 0
+    for conf, outcome in zip(confidences, outcomes):
+        brier_score_sum += (conf - outcome) ** 2
     brier_score = brier_score_sum / len(df)
 
     return brier_score
