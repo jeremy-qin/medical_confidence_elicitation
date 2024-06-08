@@ -1,3 +1,6 @@
 venv
 datasets
 results
+.env
+results_mac
+__pycache__
