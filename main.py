@@ -36,60 +36,49 @@ def standardize_and_extract_confidence(answer):
         standardized_answer = f"{match.group(1).upper()}"
         confidence_score = int(match.group(3))
     else:
-        standardized_answer = answer[0] if answer else 'Unknown'  # taking first character or marking as Unknown
+        standardized_answer = answer[0] if answer else 'Unknown' 
         confidence_score = None
     return standardized_answer, confidence_score
 
 def parse_full_output_and_store_scores(full_output_text):
-    # Split the text into sections
+
     sections = full_output_text.strip().split('\n\n')
     
-    # Initialize an empty list to store scores
     scores = []
     
     pattern = re.compile(r':?\s*(?:\[\s*|\(\s*)?(\d+(?:\.\d+)?)(?:\s*\]|\s*\))?\s*$')
     
-    # Process only the "Symptoms and signs" section
     for section in sections:
         if section.startswith("Symptoms and signs:"):
-            # Split the section into lines
             lines = section.split('\n')
-            for line in lines[1:]:  # Skip the first line which is the title
+            for line in lines[1:]: 
                 match = pattern.search(line)
                 if match:
-                    # Extract the score and convert it to a float
                     score = float(match.group(1))
                     scores.append(score)
-    
-    # Convert the list of scores to a numpy array
+
     scores_array = np.array(scores)
     return scores_array
 
 def parse_atypical_situation_scores(full_output_text):
     match = re.search(r'Atypicality: \[?(\d(?:\.\d+)?)\]?', full_output_text)
     if match:
-        # Extract the score and convert it to a float
         score = float(match.group(1))
     else:
-        # Default to None if no match is found
         score = None
     
-    # Convert the score to a numpy array and return
     return np.array([score]) if score is not None else np.array([])
 
 def standardize_and_extract_details(answer_text):
-    # Adjust the regular expression to make the "(letter)" part optional
-    # and include 'E' as a valid answer choice
     answer_match = re.search(r'- Answer(?: \(letter\))?: ([A-E])', answer_text, re.IGNORECASE)
     difficulty_match = re.search(r'- Difficulty: (\d+)', answer_text)
     confidence_match = re.search(r'- Confidence: (\d+)%', answer_text)
 
     if answer_match and difficulty_match and confidence_match:
-        standardized_answer = answer_match.group(1).upper()  # Ensuring uppercase for consistency
+        standardized_answer = answer_match.group(1).upper() 
         difficulty_score = int(difficulty_match.group(1))
         confidence_score = int(confidence_match.group(1))
     else:
-        # Defaults if the expected format is not found
         standardized_answer = 'Unknown'
         difficulty_score = None
         confidence_score = 50
@@ -97,7 +86,6 @@ def standardize_and_extract_details(answer_text):
     return standardized_answer, difficulty_score, confidence_score
 
 def extract_diagnostic_table(answer_text):
-    # Initialize a dictionary to hold the extracted data
     diagnostic_data = {
         'Diagnostic Hypotheses': [],
         'Findings in Favor': [],
@@ -106,63 +94,51 @@ def extract_diagnostic_table(answer_text):
         'Likelihood': []
     }
     
-    # Define patterns for matching the different sections of the diagnostic table
     hypothesis_pattern = re.compile(r'\d+\.\s+(.+?)(?=\d+\.|\Z)', re.DOTALL)
     favor_pattern = re.compile(r'\d+\.\s+(.+?):(.+?)(?=\d+\.|\Z)', re.DOTALL)
     against_pattern = re.compile(r'\d+\.\s+(.+?):(.+?)(?=\d+\.|\Z)', re.DOTALL)
     not_described_pattern = re.compile(r'\d+\.\s+(.+?):(.+?)(?=\d+\.|\Z)', re.DOTALL)
     likelihood_pattern = re.compile(r'\d+\.\s+(.+?):(.+?)(?=\d+\.|\Z)', re.DOTALL)
     
-    # Extract data for each section
     hypotheses = hypothesis_pattern.findall(answer_text.split('Diagnostic hypotheses:')[1].split('Findings that speak in favor of this hypothesis:')[0])
     findings_in_favor = favor_pattern.findall(answer_text.split('Findings that speak in favor of this hypothesis:')[1].split('Findings that speak against this hypothesis:')[0])
     findings_against = against_pattern.findall(answer_text.split('Findings that speak against this hypothesis:')[1].split('Findings expected to be present but not described in the case:')[0])
     expected_not_described = not_described_pattern.findall(answer_text.split('Findings expected to be present but not described in the case:')[1].split('Likelihood:')[0])
     likelihoods = likelihood_pattern.findall(answer_text.split('Likelihood:')[1])
     
-    # Function to clean up extracted strings
     def clean_extracted_strings(tuples):
         return [item.strip() for sublist in tuples for item in sublist[1:]]
 
-    # Populate the dictionary with cleaned data
     diagnostic_data['Diagnostic Hypotheses'] = [hypo.strip() for hypo in hypotheses]
     diagnostic_data['Findings in Favor'] = clean_extracted_strings(findings_in_favor)
     diagnostic_data['Findings Against'] = clean_extracted_strings(findings_against)
     diagnostic_data['Expected Findings Not Described'] = clean_extracted_strings(expected_not_described)
     diagnostic_data['Likelihood'] = clean_extracted_strings(likelihoods)
     
-    # Create a DataFrame from the dictionary
     table_data = pd.DataFrame.from_dict(diagnostic_data)
     
     return table_data
 
-# Function to standardize and extract confidence score
 def standardize_and_extract_confidence_and_reasoning(answer_text):
-    # Adjusted regex to handle additional text and variations in the answer format
     match = re.search(r'answer is ([A-D]):.*?(\d+)% confident', answer_text, re.IGNORECASE | re.DOTALL)
 
     if match:
-        # Extracting reasoning (text before the matched sentence)
         reasoning_start = match.start()
         reasoning = answer_text[:reasoning_start].strip()
 
-        # Extracting the answer letter and confidence score
         standardized_answer = match.group(1).upper()
         confidence_score = int(match.group(2))
     else:
-        # Defaults if the expected format is not found
-        reasoning = answer_text.strip()  # Consider entire text as reasoning
+        reasoning = answer_text.strip() 
         standardized_answer = 'Unknown'
         confidence_score = None
 
     return standardized_answer, confidence_score, reasoning
 
-# Function to compute ground truth probability based on the first character
 def compute_ground_truth_probability(correct_answer, model_answers):
     correct_count = sum([1 for model_ans in model_answers if model_ans[0] == correct_answer])
     return correct_count / len(model_answers)
 
-# Function to determine the majority answer
 def get_majority_answer(answers):
     if not answers:
         return 'Unknown'
@@ -175,28 +151,22 @@ def get_predicted_answer(answers, confidences):
     if not answers or not confidences or len(answers) != len(confidences):
         raise ValueError("The lengths of answers and confidences must be the same and non-empty.")
 
-    # Pair each answer with its confidence score
     answer_confidence_pairs = zip(answers, confidences)
 
-    # Find the answer with the maximum confidence score
     predicted_answer, max_confidence = max(answer_confidence_pairs, key=lambda pair: pair[1])
 
     return predicted_answer
 
 def avg_confidence(candidate_answers, candidate_confidences, given_answer):
-    # Ensure the lengths of candidate_answers and candidate_confidences match
     if len(candidate_answers) != len(candidate_confidences):
         raise ValueError("The lengths of candidate_answers and candidate_confidences must be the same.")
 
-    # Calculate the numerator: sum of confidences where the candidate answer matches the given answer
     numerator = sum(confidence for answer, confidence in zip(candidate_answers, candidate_confidences) if answer == given_answer)
 
-    # Calculate the denominator: sum of all confidences
     denominator = sum(candidate_confidences)
 
-    # Compute the average confidence
     if denominator == 0:
-        return None  # Handle the case where the sum of confidences is zero
+        return None
 
     avg_conf = numerator / denominator
     return avg_conf
@@ -254,19 +224,15 @@ def brier_score(df, sampling):
     elif sampling == "base":
         confidence_col = "All Confidence Scores"
 
-    # Extract the true answers and predictions
     true_answers = df[true_answers_col]
     predictions = df[predictions_col]
 
-    # Ensure the DataFrame columns are not empty
     if true_answers.empty or predictions.empty:
         raise ValueError("The DataFrame columns must not be empty.")
 
-    # Initialize lists for binary outcomes and confidence scores
     outcomes = []
     confidences = []
 
-    # Iterate through the DataFrame rows
     for index, row in df.iterrows():
         true_answer = row[true_answers_col]
         predicted_answer = row[predictions_col]
@@ -277,14 +243,11 @@ def brier_score(df, sampling):
 
         if confidence > 1:
             confidence = 0.5
-        # Determine the binary outcome
         outcome = 1 if predicted_answer == true_answer else 0
 
-        # Append the outcome and confidence to the lists
         outcomes.append(outcome)
         confidences.append(confidence)
 
-    # # Calculate the Brier score
     brier_score_sum = 0
     for conf, outcome in zip(confidences, outcomes):
         brier_score_sum += (conf - outcome) ** 2
@@ -352,8 +315,6 @@ def experiment(params):
         sampled_indices = random.sample(range(len(dev_data)), sample_size)
         dev_examples = [dev_data[i] for i in sampled_indices]
         dev_answers = [dev_data_answers[i] for i in sampled_indices]
-        # dev_examples = dev_data[200:200+sample_size]
-        # dev_answers = dev_data_answers[200:200+sample_size]
 
     if prompt_template == "vanilla":
         template = base_prompt_template()
@@ -452,9 +413,6 @@ def experiment(params):
                     print(f"Correct Answer: {correct_answer}")
                     print("\n")
 
-                    # table = extract_diagnostic_table(raw_answer)
-                    # table.to_csv(f"./results/{dataset}_{model}_{prompt_template}_{sample_size}_{current_time}_diagnostics.csv")
-
             i += 1
 
             average_difficulty = sum(temp_difficulty_scores) / len(temp_difficulty_scores) if temp_difficulty_scores else None
@@ -464,7 +422,7 @@ def experiment(params):
             majority_answer, consistency = get_majority_answer(temp_answers)
             final_prediction = get_predicted_answer(temp_answers, temp_scores)
 
-            answers_gpt.append(majority_answer)  # Storing only the majority answer
+            answers_gpt.append(majority_answer) 
             consistency_scores.append(consistency)
             confidence_scores.append(avg_conf)
             vanilla_confidence_scores.append(average_vanilla_confidence)
@@ -476,7 +434,6 @@ def experiment(params):
             difficulty_scores.append(temp_difficulty_scores)
             mean_difficulty_scores.append(average_difficulty)
 
-        # Creating DataFrame
         df = pd.DataFrame({
             'Questions': dev_examples,
             'Difficulty Score': difficulty_scores,
@@ -495,52 +452,7 @@ def experiment(params):
         
         df.to_parquet(f"./results/{dataset}_{model}_{prompt_template}_{sampling}_{sample_size}_{current_time}.parquet")
     
-    # elif prompt_template == "cot":
-    #     print("Using cot prompt template")
-    #     answers_gpt = []
-    #     confidence_scores = []
-    #     ground_truth_probabilities = []
-    #     all_confidence_scores = []
-    #     all_predictions = []
-    #     reasonings = []
-
-    #     for question, correct_answer in tqdm(zip(dev_examples, dev_answers), total=len(dev_examples)):
-    #         temp_scores = []
-    #         temp_answers = []
-    #         temp_reasonings = []
-
-    #         for i in range(3):
-    #             raw_answer = llm_chain.run(question)
-    #             standardized_answer, confidence_score, reasoning = standardize_and_extract_confidence_and_reasoning(raw_answer)
-    #             temp_answers.append(standardized_answer)
-    #             temp_reasonings.append(reasoning)
-    #             if confidence_score is not None:
-    #                 temp_scores.append(confidence_score)
-
-    #         average_confidence = sum(temp_scores) / len(temp_scores) if temp_scores else None
-    #         ground_truth_probability = compute_ground_truth_probability(correct_answer, temp_answers)
-    #         majority_answer = get_majority_answer(temp_answers)
-
-    #         answers_gpt.append(majority_answer)  # Storing only the majority answer
-    #         confidence_scores.append(average_confidence)
-    #         ground_truth_probabilities.append(ground_truth_probability)
-    #         all_confidence_scores.append(temp_scores)
-    #         all_predictions.append(temp_answers)
-    #         reasonings.append(temp_reasonings[-1])
-
-    #     # Creating DataFrame
-    #     df = pd.DataFrame({
-    #         'Questions': dev_examples,
-    #         'Reasoning': reasonings,
-    #         'Correct Answers': dev_answers,
-    #         'Majority Predicted Answer': answers_gpt,
-    #         'All Predicted Answers': all_predictions,
-    #         'Average Confidence': confidence_scores,
-    #         'All Confidence Scores': all_confidence_scores,
-    #         'Ground Truth Probability': ground_truth_probabilities
-    #     })
-    
-    # Compute accuracy
+    # Compute Accuracy
     print("Computing accuracy")
     correct = 0
     for i in range(len(df)):
@@ -551,22 +463,8 @@ def experiment(params):
     print(accuracy)
     np.save(f"./results/{dataset}_{model}_{prompt_template}_{sampling}_{sample_size}_{current_time}_acc.npy", acc)
 
-    #compute ece
+    #Compute ece
     print("Computing ece")
-    # df['Is Correct'] = df['Majority Predicted Answer'] == df['Correct Answers']
-    # bins = np.linspace(0, 100, 6)  # 5 bins from 0 to 1
-    # bin_indices = np.digitize(df['Average Confidence'], bins) - 1
-    # ece = 0
-    # for i in range(len(bins)-1):
-    #     bin_mask = bin_indices == i
-    #     if np.sum(bin_mask) > 0:
-    #         bin_confidence = np.mean(df.loc[bin_mask, 'Average Confidence']) / 100
-    #         bin_accuracy = np.mean(df.loc[bin_mask, 'Is Correct'])
-    #         bin_proportion = np.sum(bin_mask) / len(df)
-    #         ece += bin_proportion * abs(bin_accuracy - bin_confidence)
-    # ece = np.array([ece])
-    # print(ece)
-    # np.save(f"./results/{dataset}_{model}_{prompt_template}_{sample_size}_{current_time}_ece.npy", ece)
     ece = compute_ece(df, sampling)
     print("Computing Brier")
     brier = brier_score(df)

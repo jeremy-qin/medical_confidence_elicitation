@@ -44,23 +44,18 @@ class CommonsenseQA():
   def load_commonsense_qa(self, path):
     questions_with_choices = []
 
-    # List to store the correct answers
     correct_answers = []
 
-    # Open the file and read line by line
     with open(path) as h:
         for line in h:
-            example = json.loads(line)  # Parse the JSON object from each line
+            example = json.loads(line) 
 
-            # Construct the question text with its choices
             question_text = example['question']['stem']
             choices_text = [f"{string.ascii_uppercase[i]}: {choice['text']}" for i, choice in enumerate(example['question']['choices'])]
             question_and_choices = question_text + ' ' + ' '.join(choices_text)
             
-            # Add the constructed question and its choices to the list
             questions_with_choices.append(question_and_choices)
 
-            # The correct answer key (e.g., "A", "B", "C", etc.) is directly added to the correct_answers list
             correct_answers.append(example['answerKey'])
     return questions_with_choices, correct_answers
   
@@ -89,7 +84,6 @@ class MedMCQA():
 
     cop_to_letter = {1: "A", 2: "B", 3: "C", 4: "D"}
 
-    # Read JSON data from a file
     with open(path, 'r') as file:
       for line in file:
           data.append(json.loads(line))
@@ -129,7 +123,6 @@ class PubmedQA():
 
     cop_to_letter = {"yes": "A", "no": "B", "maybe": "C"}
 
-    # Read JSON data from a file
     with open(path, 'r') as file:
         data = json.load(file)
     
