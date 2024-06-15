@@ -467,7 +467,7 @@ def experiment(params):
     print("Computing ece")
     ece = compute_ece(df, sampling)
     print("Computing Brier")
-    brier = brier_score(df)
+    brier = brier_score(df, sampling)
     print(brier)
 
     print("Computing AUC")
