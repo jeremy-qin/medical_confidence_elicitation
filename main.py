@@ -1,9 +1,9 @@
 default_params = {
-    "dataset": "medqa",
-    "model": "gpt-4-turbo",
+    "dataset": "pubmedqa",
+    "model": "gpt3",
     "sample_size": "all",
     "k": 1,
-    "prompt_template": "vanilla",
+    "prompt_template": "atypical",
     "sampling": "base"
 }
 
@@ -334,7 +334,7 @@ def experiment(params):
     else:
         raise ValueError("Invalid prompt template")
     
-    if model == "gpt-3.5-turbo":
+    if model == "gpt3":
         llm = ChatOpenAI(model_name='gpt-3.5-turbo')
     elif model == "gpt-4":
         llm = ChatOpenAI(model_name="gpt-4")
@@ -363,6 +363,7 @@ def experiment(params):
         final_answer = []
         difficulty_scores = []
         mean_difficulty_scores = []
+        atypical_scores_list = []
 
         i = 0
 
@@ -433,6 +434,7 @@ def experiment(params):
             final_answer.append(final_prediction)
             difficulty_scores.append(temp_difficulty_scores)
             mean_difficulty_scores.append(average_difficulty)
+            atypical_scores_list.append(atypical_scores)
 
         df = pd.DataFrame({
             'Questions': dev_examples,
@@ -447,10 +449,11 @@ def experiment(params):
             'Average Confidence': confidence_scores,
             'All Vanilla Confidence Scores': all_vanilla_confidence_scores,
             'All Confidence Scores': all_confidence_scores,
-            'Ground Truth Probability': ground_truth_probabilities
+            'Ground Truth Probability': ground_truth_probabilities,
+            'Atypical Scores': atypical_scores_list
         })
         
-        df.to_parquet(f"./results/{dataset}_{model}_{prompt_template}_{sampling}_{sample_size}_{current_time}.parquet")
+        df.to_parquet(f"./results/{model}/{dataset}_{prompt_template}_{sampling}_{sample_size}.parquet")
     
     # Compute Accuracy
     print("Computing accuracy")
