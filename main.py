@@ -1,9 +1,9 @@
 default_params = {
-    "dataset": "pubmedqa",
-    "model": "gpt3",
-    "sample_size": "all",
+    "dataset": "medqa",
+    "model": "qwen",
+    "sample_size": 500,
     "k": 1,
-    "prompt_template": "atypical",
+    "prompt_template": "vanilla",
     "sampling": "base"
 }
 
@@ -24,7 +24,6 @@ import numpy as np
 from sklearn.metrics import auc
 from collections import Counter
 from tqdm import tqdm
-from langchain_community.llms import HuggingFaceHub
 from langchain.chains import LLMChain
 
 from prompt_templates import base_prompt_template, base_prompt_template_2, cot_prompt_template, atypical_prompt_template, atypical_situation_prompt_template
@@ -267,6 +266,7 @@ def experiment(params):
     from langchain_community.chat_models import ChatOpenAI
     from langchain_anthropic import ChatAnthropic
     from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_ollama.llms import OllamaLLM
 
     load_dotenv()
 
@@ -344,6 +344,10 @@ def experiment(params):
         llm = ChatAnthropic(model='claude-3-sonnet-20240229')
     elif model == "gemini":
         llm = ChatGoogleGenerativeAI(model="gemini-pro")
+    elif model == "llama3":
+        llm = OllamaLLM(model="llama3.1")
+    elif model == "qwen":
+        llm = OllamaLLM(model="qwen2.5:7b")
         
     llm_chain = LLMChain(
         prompt = prompt,
@@ -393,6 +397,8 @@ def experiment(params):
                     calibrated_confidence = confidence_score * np.mean(np.exp(atypical_scores-1))
                     print(f"Calibrated Confidence: {calibrated_confidence}")
                     confidence_score = calibrated_confidence
+                else:
+                    atypical_scores = np.full(k, -999)
     
                 temp_answers.append(standardized_answer)
                 if difficulty_score is not None:
